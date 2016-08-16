@@ -81,7 +81,7 @@ with open(coordinates, 'w') as output3:
     with open(args.gff, 'rU') as gff3:
         for line in gff3:
             line = line.replace('\n', '')
-            if '\tmRNA\t' in line:
+            if '\tgene\t' in line:
                 if pattern.search(line):
                     match = pattern.search(line).group(0) #get regex match
                     cols = line.split('\t')
@@ -96,6 +96,13 @@ with open(coordinates, 'w') as output3:
 
 #map reads to genome
 reads = ' '.join(args.reads)
+if '.bam' in reads:
+    basename = args.reads.split('.bam')[0]
+    fastq = basename+'.fastq' 
+    print "Converting BAM to FASTQ"
+    subprocess.call(['bedtools', 'bamtofastq', '-i', args.reads, '-fq', fastq])
+else:
+    fastq = reads
 samout = os.path.join(tmpdir, 'mapping.sam')
 bamout = os.path.join(tmpdir, 'mapping.bam')
 bamsort = os.path.join(tmpdir, 'mapping.sort.bam')
@@ -107,7 +114,7 @@ if not os.path.isfile(bamsort):
     if not os.path.isfile(samout):
         print "Mapping reads to genome using BWA"
         with open(samout, 'w') as output4:
-            subprocess.call(['bwa', 'mem', '-t', str(args.cpus), os.path.join(tmpdir, 'genome'), reads], stdout = output4, stderr=FNULL)
+            subprocess.call(['bwa', 'mem', '-t', str(args.cpus), os.path.join(tmpdir, 'genome'), fastq], stdout = output4, stderr=FNULL)
     with open(bamout, 'w') as output5:
         subprocess.call(['samtools', 'view', '-bS', samout], stdout=output5)
 
