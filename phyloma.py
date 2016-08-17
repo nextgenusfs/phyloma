@@ -5,7 +5,7 @@
 import sys, os, subprocess, inspect
 script_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 
-version = '0.0.2'
+version = '0.0.3'
 
 default_help = """
 Usage:       phyloma <command> <arguments>
@@ -65,7 +65,10 @@ Arguments:   -i, --input      `phyloma map` output folders (Required)
              -o, --out         Base name for output (Required)
              -n, --num_concat  Number of marker-genes to concatenate for align/tree. Default: 50
              -m, --min_cov     Minimum coverage of marker-gene. Default: 0.25
+             --bootstrap       Number of bootstrap replicates. Default: 100
+             --outgroup        Outgroup species for RAxML.
              --single_trees    Create single gene trees
+             --raxml           RAxML method. Default: GTRGAMMA
             
 Written by Jon Palmer (2016) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)

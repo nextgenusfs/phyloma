@@ -95,14 +95,21 @@ with open(coordinates, 'w') as output3:
                         coordDict[ID] = scaffold+':'+cols[3]+'-'+cols[4]
 
 #map reads to genome
-reads = ' '.join(args.reads)
-if '.bam' in reads:
-    basename = args.reads.split('.bam')[0]
-    fastq = basename+'.fastq' 
-    print "Converting BAM to FASTQ"
-    subprocess.call(['bedtools', 'bamtofastq', '-i', args.reads, '-fq', fastq])
+if len(args.reads) > 1:
+    r1 = args.reads[0]
+    r2 = args.reads[1]
+elif len(args.reads) > 2:
+    print "Error: only one set of paired reads supported"
+    os._exit(1)
 else:
-    fastq = reads
+    if args.reads[0].endswith('.bam'):
+        basename = args.reads[0].split('.bam')[0]
+        fastq = os.path.join(tmpdir, basename+'.fastq')
+        print "Converting BAM to FASTQ"
+        subprocess.call(['bedtools', 'bamtofastq', '-i', args.reads[0], '-fq', fastq])
+    else:
+        fastq = args.reads[0]
+        
 samout = os.path.join(tmpdir, 'mapping.sam')
 bamout = os.path.join(tmpdir, 'mapping.bam')
 bamsort = os.path.join(tmpdir, 'mapping.sort.bam')
@@ -114,10 +121,12 @@ if not os.path.isfile(bamsort):
     if not os.path.isfile(samout):
         print "Mapping reads to genome using BWA"
         with open(samout, 'w') as output4:
-            subprocess.call(['bwa', 'mem', '-t', str(args.cpus), os.path.join(tmpdir, 'genome'), fastq], stdout = output4, stderr=FNULL)
+            if len(args.reads) > 1:
+                subprocess.call(['bwa', 'mem', '-t', str(args.cpus), os.path.join(tmpdir, 'genome'), r1, r2], stdout = output4, stderr=FNULL)
+            else:
+                subprocess.call(['bwa', 'mem', '-t', str(args.cpus), os.path.join(tmpdir, 'genome'), fastq], stdout = output4, stderr=FNULL)
     with open(bamout, 'w') as output5:
         subprocess.call(['samtools', 'view', '-bS', samout], stdout=output5)
-
     subprocess.call(['samtools', 'sort', '-o', bamsort, bamout], stderr=FNULL)
     subprocess.call(['samtools', 'index', bamsort])
     #cleanup
@@ -147,6 +156,8 @@ if not os.path.isfile(variants+'.gz'):
         subprocess.call(['freebayes', '-p', '1', '-q', '15', '-f', args.sequence, bamsort], stdout = output)
     #compress and index vcf file
     subprocess.call(['bgzip', '-f', variants])
+else:
+    print "Variant calling output detected, using existing data"
 subprocess.call(['bcftools', 'index', '-f', variants+'.gz'])
 
 #now get consensus sequence for each gene
@@ -195,8 +206,8 @@ with open(coverage_stats, 'w') as output:
                     if coverage == 1:
                         perfect += 1
                     output.write('%s\t%f\n' % (name, coverage))
-                    print name+'\t'+'{0:.0f}% coverage'.format(coverage*100.0)       
-print "------------------------------------"
+                    #print name+'\t'+'{0:.0f}% coverage'.format(coverage*100.0)       
+#print "------------------------------------"
 print "Found %i total marker-genes" % total
 print "%i genes are atleast 75%% covered" % good
 print "%i genes are 100%% covered" % perfect

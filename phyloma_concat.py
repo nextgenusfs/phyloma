@@ -17,6 +17,9 @@ parser.add_argument('-n','--num_concat', default=50, type=int, help='Number of g
 parser.add_argument('-m','--min_cov', default=0.25, type=float, help='Minimum coverage')
 parser.add_argument('-o','--out', required=True, help='Output base folder')
 parser.add_argument('--single_trees', action='store_true', help='Run alignment/RAxML on individual genes')
+parser.add_argument('--outgroup', help='Name of species to use as outgroup for concat tree')
+parser.add_argument('--bootstrap', default=100, type=int, help='Number of bootstrap replicates')
+parser.add_argument('--raxml', default='GTRGAMMA', help='RAxML method')
 args = parser.parse_args()
 
 #check input
@@ -100,11 +103,16 @@ if args.single_trees:
     if not os.path.isdir(args.out+'_trees'):
         os.makedirs(args.out+'_trees')
     for i in final_list:
+        print "------------------------------------"
         print "Working on %s" % i
         seq = os.path.join(args.out+'_singles', i+'.fa')
-        subprocess.call([sys.executable, align, '-f', os.path.abspath(seq), '-o', i], cwd = args.out+'_align')
+        subprocess.call([sys.executable, align, '-f', os.path.abspath(seq), '-o', i, '--bootstrap', str(args.bootstrap), '-m', args.raxml], cwd = args.out+'_align')
         os.rename(os.path.join(args.out+'_align', i+'.nwk'), os.path.join(args.out+'_trees', i+'.nwk'))
+print "------------------------------------"        
 print "Running MAFFT/RAxML on concatentated fasta"
-subprocess.call([sys.executable, align, '-f', os.path.abspath(concat), '-o', args.out+'_concat'])
-
+if not args.outgroup:
+    subprocess.call([sys.executable, align, '-f', os.path.abspath(concat), '-o', args.out+'_concat', '--bootstrap', str(args.bootstrap), '-m', args.raxml])
+else:
+    subprocess.call([sys.executable, align, '-f', os.path.abspath(concat), '-o', args.out+'_concat', '--bootstrap', str(args.bootstrap), '--outgroup', args.outgroup, '-m', args.raxml])
+print "------------------------------------"
 os._exit(1)
