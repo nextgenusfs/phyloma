@@ -12,17 +12,26 @@ class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
         super(MyFormatter,self).__init__(prog,max_help_position=40)
 
 parser = argparse.ArgumentParser(prog='phyloma_map.py', formatter_class = MyFormatter)
-parser.add_argument('-r','--reads', nargs='+', required=True, help='Input FASTQ reads (single or paired)')
+parser.add_argument('-r','--reads', nargs='+', help='Input FASTQ reads (single or paired)')
 parser.add_argument('-g','--gff', required=True, help='GFF')
 parser.add_argument('-s','--sequence', required=True, help='genome fasta file')
 parser.add_argument('-b','--busco', help='BUSCO output (pulling SC-orthologs)')
 parser.add_argument('-l','--list', help='Gene IDs (ID\tNewName\n)')
 parser.add_argument('-o','--out', required=True, help='Output base folder')
-parser.add_argument('--cpus', default=6, type=int, help='Numbe of CPUS')
+parser.add_argument('-c','--cpus', default=6, type=int, help='Number of CPUS')
 parser.add_argument('--force', action='store_true', help='use existing folder')
+parser.add_argument('--bam', help='Precomputed BAM alignment (sorted)')
+parser.add_argument('--variants', help='Precomputed FreeBayes variants (bgzipped)')
 args = parser.parse_args()
 
 FNULL = open(os.devnull, 'w')
+
+#check inputs
+if not args.variants:
+    if not args.bam:
+        if not args.reads:
+            print "No valid input detected: -r, --bam, or --variants required."
+            os._exit(1)
 
 #setup tempdir
 tmpdir = args.out
@@ -93,72 +102,80 @@ with open(coordinates, 'w') as output3:
                     output3.write("%s\t%s\t%s\t%s\n" % (scaffold, cols[3], cols[4], ID))
                     if not ID in coordDict:
                         coordDict[ID] = scaffold+':'+cols[3]+'-'+cols[4]
-
-#map reads to genome
-if len(args.reads) > 1:
-    r1 = args.reads[0]
-    r2 = args.reads[1]
-elif len(args.reads) > 2:
-    print "Error: only one set of paired reads supported"
-    os._exit(1)
-else:
-    if args.reads[0].endswith('.bam'):
-        basename = args.reads[0].split('.bam')[0]
-        fastq = os.path.join(tmpdir, basename+'.fastq')
-        print "Converting BAM to FASTQ"
-        subprocess.call(['bedtools', 'bamtofastq', '-i', args.reads[0], '-fq', fastq])
-    else:
-        fastq = args.reads[0]
-        
-samout = os.path.join(tmpdir, 'mapping.sam')
-bamout = os.path.join(tmpdir, 'mapping.bam')
-bamsort = os.path.join(tmpdir, 'mapping.sort.bam')
-
-if not os.path.isfile(bamsort):
-    print "Building BWA index"
-    if not os.path.isfile(os.path.join(tmpdir, 'genome.bwt')):
-        subprocess.call(['bwa', 'index', '-p', 'genome', os.path.abspath(args.sequence)], cwd = tmpdir, stderr=FNULL, stdout=FNULL)
-    if not os.path.isfile(samout):
-        print "Mapping reads to genome using BWA"
-        with open(samout, 'w') as output4:
-            if len(args.reads) > 1:
-                subprocess.call(['bwa', 'mem', '-t', str(args.cpus), os.path.join(tmpdir, 'genome'), r1, r2], stdout = output4, stderr=FNULL)
+if not args.variants:
+    if not args.bam:
+        #map reads to genome
+        if len(args.reads) > 1:
+            r1 = args.reads[0]
+            r2 = args.reads[1]
+        elif len(args.reads) > 2:
+            print "Error: only one set of paired reads supported"
+            os._exit(1)
+        else:
+            if args.reads[0].endswith('.bam'):
+                basename = args.reads[0].split('.bam')[0]
+                fastq = os.path.join(tmpdir, basename+'.fastq')
+                print "Converting BAM to FASTQ"
+                subprocess.call(['bedtools', 'bamtofastq', '-i', args.reads[0], '-fq', fastq])
             else:
-                subprocess.call(['bwa', 'mem', '-t', str(args.cpus), os.path.join(tmpdir, 'genome'), fastq], stdout = output4, stderr=FNULL)
-    with open(bamout, 'w') as output5:
-        subprocess.call(['samtools', 'view', '-bS', samout], stdout=output5)
-    subprocess.call(['samtools', 'sort', '-o', bamsort, bamout], stderr=FNULL)
-    subprocess.call(['samtools', 'index', bamsort])
-    #cleanup
-    os.remove(samout)
-    os.remove(bamout)
-else:
-    print "BWA mapping file found, skipping mapping"
+                fastq = args.reads[0]
+        
+        samout = os.path.join(tmpdir, 'mapping.sam')
+        bamout = os.path.join(tmpdir, 'mapping.bam')
+        bamsort = os.path.join(tmpdir, 'mapping.sort.bam')
 
-#get zero coverage information for each region
-zeroCoverage = os.path.join(tmpdir, 'nocoverage.bed')
-with open(zeroCoverage+'.tmp', 'w') as coverage:
-    subprocess.call(['samtools', 'depth', '-aa', '-b', coordinates, bamsort], stdout=coverage)
-with open(zeroCoverage, 'w') as coverage_out:
-    with open(zeroCoverage+'.tmp', 'rU') as input:
-        for line in input:
-            line = line.replace('\n', '')
-            cols = line.split('\t')
-            if int(cols[2]) == 0:
-                coverage_out.write('%s\t%i\t%s\n' % (cols[0], int(cols[1])-1, cols[1]))
-os.remove(zeroCoverage+'.tmp')
+        if not os.path.isfile(bamsort):
+            print "Building BWA index"
+            if not os.path.isfile(os.path.join(tmpdir, 'genome.bwt')):
+                subprocess.call(['bwa', 'index', '-p', 'genome', os.path.abspath(args.sequence)], cwd = tmpdir, stderr=FNULL, stdout=FNULL)
+            if not os.path.isfile(samout):
+                print "Mapping reads to genome using BWA"
+                with open(samout, 'w') as output4:
+                    if len(args.reads) > 1:
+                        subprocess.call(['bwa', 'mem', '-t', str(args.cpus), os.path.join(tmpdir, 'genome'), r1, r2], stdout = output4, stderr=FNULL)
+                    else:
+                        subprocess.call(['bwa', 'mem', '-t', str(args.cpus), os.path.join(tmpdir, 'genome'), fastq], stdout = output4, stderr=FNULL)
+            with open(bamout, 'w') as output5:
+                subprocess.call(['samtools', 'view', '-bS', samout], stdout=output5)
+            subprocess.call(['samtools', 'sort', '-o', bamsort, bamout], stderr=FNULL)
+            subprocess.call(['samtools', 'index', bamsort])
+            #cleanup
+            os.remove(samout)
+            os.remove(bamout)
+        else:
+            print "BWA mapping file found, skipping mapping"
+
+        #get zero coverage information for each region
+        zeroCoverage = os.path.join(tmpdir, 'nocoverage.bed')
+        with open(zeroCoverage+'.tmp', 'w') as coverage:
+            subprocess.call(['samtools', 'depth', '-aa', '-b', coordinates, bamsort], stdout=coverage)
+        with open(zeroCoverage, 'w') as coverage_out:
+            with open(zeroCoverage+'.tmp', 'rU') as input:
+                for line in input:
+                    line = line.replace('\n', '')
+                    cols = line.split('\t')
+                    if int(cols[2]) == 0:
+                        coverage_out.write('%s\t%i\t%s\n' % (cols[0], int(cols[1])-1, cols[1]))
+        os.remove(zeroCoverage+'.tmp')
+    else:
+        bamsort = os.path.abspath(args.bam)
+        subprocess.call(['samtools', 'index', bamsort])
     
-#call variants using freebayes
-print "Calling variants using FreeBayes"
-variants = os.path.join(tmpdir, 'variants.vcf')
-if not os.path.isfile(variants+'.gz'):
-    with open(variants, 'w') as output:
-        subprocess.call(['freebayes', '-p', '1', '-q', '15', '-f', args.sequence, bamsort], stdout = output)
-    #compress and index vcf file
-    subprocess.call(['bgzip', '-f', variants])
+    #call variants using freebayes
+    print "Calling variants using FreeBayes"
+    variants = os.path.join(tmpdir, 'variants.vcf')
+    if not os.path.isfile(variants+'.gz'):
+        with open(variants, 'w') as output:
+            subprocess.call(['freebayes', '-p', '1', '-q', '15', '-f', args.sequence, bamsort], stdout = output)
+        #compress and index vcf file
+        subprocess.call(['bgzip', '-f', variants])
+    else:
+        print "Variant calling output detected, using existing data"
+    subprocess.call(['bcftools', 'index', '-f', variants+'.gz'])
+
 else:
-    print "Variant calling output detected, using existing data"
-subprocess.call(['bcftools', 'index', '-f', variants+'.gz'])
+    print "Pre-computed variants passed, re-indexing"
+    subprocess.call(['bcftools', 'index', '-f', variants+'.gz'])
 
 #now get consensus sequence for each gene
 print "Extracting consensus sequences for each gene"

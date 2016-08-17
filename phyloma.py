@@ -5,7 +5,7 @@
 import sys, os, subprocess, inspect
 script_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 
-version = '0.0.3'
+version = '0.0.4'
 
 default_help = """
 Usage:       phyloma <command> <arguments>
@@ -33,10 +33,12 @@ Description: This scripts takes FASTQ sequencing reads (single or paired) and ma
 Arguments:   -r, --reads    FASTQ sequence reads (Required)
              -g, --gff      Reference GFF3 annotation file (Required)
              -s, --sequence Reference genome FASTA. (Required)
-             -l, --list     List of Consverved Gene models
+             -l, --list     List of Consverved Gene models. LocusID\tNewName
              -b, --busco    BUSCO OGS results on proteome
              -o, --out      Base Output Name (i.e. isolate name)
              -c, --cpus     Number of CPUs. Default: 6
+             --bam          Precomputed BAM alignment (sorted .bam)
+             --variants     Precomputed FreeBayes output (vcf.gz)
              --force        Over-write folder
             
 Written by Jon Palmer (2016) nextgenusfs@gmail.com
