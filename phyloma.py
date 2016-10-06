@@ -5,16 +5,17 @@
 import sys, os, subprocess, inspect
 script_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 
-version = '0.0.4'
+version = '0.0.5'
 
 default_help = """
 Usage:       phyloma <command> <arguments>
 version:     %s
 
-Description: Phyloma: Phylogentic Marker-gene Analysis using Reference Genome
+Description: Phyloma: Phylogentic Marker-gene Analysis
     
 Command:     map            Map reads to Reference Genome
              draw           Combine mapped data to draw trees
+             hmm            Find HMM models in genomes (GBK format)
              
 Written by Jon Palmer (2016) nextgenusfs@gmail.com
         """ % version
@@ -53,7 +54,7 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
             subprocess.call(arguments)
         else:
             print help
-            os._exit(1)
+            sys.exit(1)
     elif sys.argv[1] == 'draw':
         help = """
 Usage:       phyloma %s <arguments>
@@ -84,13 +85,46 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
             subprocess.call(arguments)
         else:
             print help
-            os._exit(1)
+            sys.exit(1)
+    elif sys.argv[1] == 'hmm':
+        help = """
+Usage:       phyloma %s <arguments>
+version:     %s
+
+Description: This scripts takes a single or multiple genomes in GBK format and HMM file
+             and searches for each protein model in the genome.  It will first search the 
+             proteome, but if model is not found it will search DNA using tblastn/exonerate.
+             The ouput is summary stats per genome as well can produce a concatenated multi-
+             FASTA file for downstream phylogenies. 
+    
+Arguments:   -i, --input      Genome in GenBank format, list with spaces or *.gbk
+             -m, --hmm        HMM file to search for (can be 1 or many)
+             -o, --out        Basename for output files. Default: findHMM
+             --evalue         Threshold for HMMScan. Default: 1e-50
+             --cpus           Number of CPUs to use. Default: 2
+             --split_hmms     Output multi-FASTA for each HMM and concatenated for each genome
+             --maxIntron      Maxmimum intron length. Default: 3000
+             --debug          Keep intermediate files, extra verbosity to output
+           
+Written by Jon Palmer (2016) nextgenusfs@gmail.com
+        """ % (sys.argv[1], version)
+        
+        arguments = sys.argv[2:]
+        if len(arguments) > 1:
+            cmd = os.path.join(script_path, 'findHMM.py')
+            arguments.insert(0, cmd)
+            exe = sys.executable
+            arguments.insert(0, exe)
+            subprocess.call(arguments)
+        else:
+            print help
+            sys.exit(1)
     elif sys.argv[1] == 'version':
         print "phyloma v.%s" % version
     else:
         print "%s option not recognized" % sys.argv[1]
         print default_help
-        os._exit(1)
+        sys.exit(1)
     
 else:
     print default_help
