@@ -5,7 +5,7 @@
 import sys, os, subprocess, inspect
 script_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 
-version = '0.0.5'
+version = '0.0.6'
 
 default_help = """
 Usage:       phyloma <command> <arguments>
@@ -16,6 +16,7 @@ Description: Phyloma: Phylogentic Marker-gene Analysis
 Command:     map            Map reads to Reference Genome
              draw           Combine mapped data to draw trees
              hmm            Find HMM models in genomes (GBK format)
+             raxml          Construct RAxML phylogeny.
              
 Written by Jon Palmer (2016) nextgenusfs@gmail.com
         """ % version
@@ -119,12 +120,41 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
         else:
             print help
             sys.exit(1)
+    elif sys.argv[1] == 'raxml':
+        help = """
+Usage:       phyloma %s <arguments>
+version:     %s
+
+Description: This script is a wrapper for RAxML.  It will remove gaps from sequence and run
+             RAxML according to the method you pass.
+    
+Arguments:   -f,--fasta         Input multi-FASTA file (Required)
+             -o,--out           Base name for output. Default: out
+             -m,--raxml_method  RAxML method. Default: GTRGAMMA
+             --bootstrap        Number of bootstrap replicates. Default: 100
+             --outgroup         Outgroup species for RAxML.
+             --cpus             Number of CPUs to use. Default: 6
+
+Written by Jon Palmer (2016) nextgenusfs@gmail.com
+        """ % (sys.argv[1], version)
+        
+        arguments = sys.argv[2:]
+        if len(arguments) > 1:
+            cmd = os.path.join(script_path, 'mafft2raxml.py')
+            arguments.insert(0, cmd)
+            exe = sys.executable
+            arguments.insert(0, exe)
+            subprocess.call(arguments)
+        else:
+            print help
+            sys.exit(1)
+
     elif sys.argv[1] == 'version':
         print "phyloma v.%s" % version
     else:
         print "%s option not recognized" % sys.argv[1]
         print default_help
         sys.exit(1)
-    
+
 else:
     print default_help

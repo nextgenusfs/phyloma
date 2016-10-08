@@ -14,6 +14,7 @@ parser.add_argument('--cpus', default=6, help='Num of threads to use')
 args = parser.parse_args()
 
 convertRAxML = os.path.join(currentdir, 'raxml_convert.pl')
+newick2nexus = os.path.join(currentdir, 'newick2nexus.py')
 FNULL = open(os.devnull, 'w')
 def repl(m):
    return 'N' * len(m.group())
@@ -126,6 +127,9 @@ def RunRAxML(input):
     #convert to proper newick format
     with open(args.out+'.nwk', 'w') as output:
         subprocess.call([convertRAxML, 'RAxML_bipartitionsBranchLabels.'+raxml_out], stdout = output)
+    #convert to nexus format
+    with open(args.out+'.nexus', 'w') as output2:
+        subprocess.call([newick2nexus, args.out+'.nwk'], stdout = output2)
     for file in os.listdir("."):
         if file.startswith("RAxML_info"):
             os.rename(file, args.out+'.raxml.log')
@@ -151,7 +155,7 @@ if countN > 0:
     print("Length of alignment: %s\nN's in second pass: %s" % (str(total_len), str(countN)))
 else:
     RunRAxML(clean_out)
-    os._exit(1)
+    sys.exit(1)
 
 if countN > 0:
     clean3 = args.out + '.mafft.clean3.fa'
@@ -159,7 +163,7 @@ if countN > 0:
     print("Length of alignment: %s\nN's in third pass: %s" % (str(total_len), str(countN)))
 else:
     RunRAxML(clean2)
-    os._exit(1)
+    sys.exit(1)
 
 if countN > 0:
     clean4 = args.out + '.mafft.clean4.fa'
@@ -167,7 +171,7 @@ if countN > 0:
     print("Length of alignment: %s\nN's in fourth pass: %s" % (str(total_len), str(countN)))
 else:
     RunRAxML(clean3)
-    os._exit(1)
+    sys.exit(1)
 
 if countN > 0:
     clean5 = args.out + '.mafft.clean5.fa'
@@ -175,7 +179,7 @@ if countN > 0:
     print("Length of alignment: %s\nN's in fifth pass: %s" % (str(total_len), str(countN)))
 else:
     RunRAxML(clean4)
-    os._exit(1)
+    sys.exit(1)
 
 if countN > 0:
     clean6 = args.out + '.mafft.clean6.fa'
@@ -184,5 +188,5 @@ if countN > 0:
     RunRAxML(clean6)
 else:
     RunRAxML(clean5)
-    os._exit(1)
+    sys.exit(1)
 

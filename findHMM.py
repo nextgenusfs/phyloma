@@ -24,6 +24,7 @@ parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs')
 parser.add_argument('--debug', action='store_true', help='Debug')
 parser.add_argument('--maxIntron', default='3000', help='Maximum intron length')
 parser.add_argument('--split_hmms', action='store_true', help='Output multi-FASTA for each HMM model')
+parser.add_argument('--reuse', help='Reuse data in tmp directory')
 args=parser.parse_args()
 FNULL = open(os.devnull, 'w')
 
@@ -347,7 +348,11 @@ if args.split_hmms:
             trimalout = os.path.join(tmpdir, i+'.trimal.fa')
             with open(mafftout, 'w') as output:
                 subprocess.call(['mafft', os.path.join(tmpdir,i+'.proteins.fa')], stdout = output, stderr = FNULL)
-            subprocess.call(['trimal', '-in', mafftout, '-out', trimalout, '-automated1', '-keepheader'])
+            trimalError = subprocess.Popen(['trimal', '-in', mafftout, '-out', trimalout, '-automated1', '-keepheader'], stderr=subprocess.STDOUT, stdout=subprocess.PIPE).communicate()[0].rstrip()
+            if trimalError != '':  #if you get any warning or error from trimAl, then skip record.
+                print trimalError
+                print "Skipping %s, at least 1 seq composed only of gaps after trimAl"
+                continue
             with open(trimalout, 'rU') as trimal:
                 for rec in SeqIO.parse(trimal, 'fasta'):
                     ID = rec.id.split('|')[0]
