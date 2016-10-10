@@ -5,7 +5,7 @@
 import sys, os, subprocess, inspect
 script_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 
-version = '0.0.6'
+version = '0.0.7'
 
 default_help = """
 Usage:       phyloma <command> <arguments>
@@ -125,10 +125,9 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
 Usage:       phyloma %s <arguments>
 version:     %s
 
-Description: This script is a wrapper for RAxML.  It will remove gaps from sequence and run
-             RAxML according to the method you pass.
+Description: This script is a wrapper for RAxML.
     
-Arguments:   -f,--fasta         Input multi-FASTA file (Required)
+Arguments:   -i,--inpu         Input multi-FASTA file (Required)
              -o,--out           Base name for output. Default: out
              -m,--raxml_method  RAxML method. Default: GTRGAMMA
              --bootstrap        Number of bootstrap replicates. Default: 100
@@ -140,7 +139,7 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
         
         arguments = sys.argv[2:]
         if len(arguments) > 1:
-            cmd = os.path.join(script_path, 'mafft2raxml.py')
+            cmd = os.path.join(script_path, 'run_raxml.py')
             arguments.insert(0, cmd)
             exe = sys.executable
             arguments.insert(0, exe)
