@@ -5,7 +5,7 @@
 import sys, os, subprocess, inspect
 script_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 
-version = '0.0.7'
+version = '0.0.8'
 
 default_help = """
 Usage:       phyloma <command> <arguments>
@@ -127,7 +127,7 @@ version:     %s
 
 Description: This script is a wrapper for RAxML.
     
-Arguments:   -i,--inpu         Input multi-FASTA file (Required)
+Arguments:   -i,--input         Input multi-FASTA file (Required)
              -o,--out           Base name for output. Default: out
              -m,--raxml_method  RAxML method. Default: GTRGAMMA
              --bootstrap        Number of bootstrap replicates. Default: 100

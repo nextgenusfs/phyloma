@@ -4,7 +4,7 @@
 #dependencies:
 #bwa, freebayes, bedtools, bcftools, samtools, tabix, bgzip
 
-import sys, os, re, argparse, subprocess
+import sys, os, re, argparse, subprocess, shutil
 from Bio import SeqIO
 
 class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
@@ -145,18 +145,7 @@ if not args.variants:
         else:
             print "BWA mapping file found, skipping mapping"
 
-        #get zero coverage information for each region
-        zeroCoverage = os.path.join(tmpdir, 'nocoverage.bed')
-        with open(zeroCoverage+'.tmp', 'w') as coverage:
-            subprocess.call(['samtools', 'depth', '-aa', '-b', coordinates, bamsort], stdout=coverage)
-        with open(zeroCoverage, 'w') as coverage_out:
-            with open(zeroCoverage+'.tmp', 'rU') as input:
-                for line in input:
-                    line = line.replace('\n', '')
-                    cols = line.split('\t')
-                    if int(cols[2]) == 0:
-                        coverage_out.write('%s\t%i\t%s\n' % (cols[0], int(cols[1])-1, cols[1]))
-        os.remove(zeroCoverage+'.tmp')
+
     else:
         bamsort = os.path.abspath(args.bam)
         subprocess.call(['samtools', 'index', bamsort])
@@ -174,8 +163,29 @@ if not args.variants:
     subprocess.call(['bcftools', 'index', '-f', variants+'.gz'])
 
 else:
+    if args.bam:
+        bamsort = os.path.abspath(args.bam)
+        subprocess.call(['samtools', 'index', bamsort])
+    else:
+        print "Sorted BAM file required (--bam) to map zero coverage regions"
+        sys.exit(1)
     print "Pre-computed variants passed, re-indexing"
+    variants = os.path.join(tmpdir, 'variants.vcf')
+    shutil.copyfile(args.variants, variants+'.gz')
     subprocess.call(['bcftools', 'index', '-f', variants+'.gz'])
+    
+#get zero coverage information for each region
+zeroCoverage = os.path.join(tmpdir, 'nocoverage.bed')
+with open(zeroCoverage+'.tmp', 'w') as coverage:
+    subprocess.call(['samtools', 'depth', '-aa', '-b', coordinates, bamsort], stdout=coverage)
+with open(zeroCoverage, 'w') as coverage_out:
+    with open(zeroCoverage+'.tmp', 'rU') as input:
+        for line in input:
+            line = line.replace('\n', '')
+            cols = line.split('\t')
+            if int(cols[2]) == 0:
+                coverage_out.write('%s\t%i\t%s\n' % (cols[0], int(cols[1])-1, cols[1]))
+os.remove(zeroCoverage+'.tmp')
 
 #now get consensus sequence for each gene
 print "Extracting consensus sequences for each gene"
