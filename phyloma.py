@@ -5,7 +5,7 @@
 import sys, os, subprocess, inspect
 script_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 
-version = '0.0.8'
+version = '0.0.9'
 
 default_help = """
 Usage:       phyloma <command> <arguments>
@@ -73,6 +73,7 @@ Arguments:   -i, --input      `phyloma map` output folders (Required)
              --outgroup        Outgroup species for RAxML.
              --single_trees    Create single gene trees
              --raxml           RAxML method. Default: GTRGAMMA
+             --cpus            Number of CPUs to use. Default: 6
             
 Written by Jon Palmer (2016) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)

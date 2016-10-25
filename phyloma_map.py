@@ -212,6 +212,8 @@ print "------------------------------------"
 total = 0
 good = 0
 perfect = 0
+missing = 0
+missingList = []
 coverage_stats = os.path.join(tmpdir, 'coverage_stats.txt')
 with open(coverage_stats, 'w') as output:
     for file in os.listdir(tmpdir):
@@ -225,6 +227,8 @@ with open(coverage_stats, 'w') as output:
                     try:
                         n_coverage = ns / float(length)
                     except ZeroDivisionError:
+                        missing += 1
+                        missingList.append(name)
                         continue
                     total +=1
                     coverage = 1 - n_coverage
@@ -235,7 +239,8 @@ with open(coverage_stats, 'w') as output:
                     output.write('%s\t%f\n' % (name, coverage))
                     #print name+'\t'+'{0:.0f}% coverage'.format(coverage*100.0)       
 #print "------------------------------------"
-print "Found %i total marker-genes" % total
+print "Found %i of %i total marker-genes" % (total, len(geneDict))
 print "%i genes are atleast 75%% covered" % good
 print "%i genes are 100%% covered" % perfect
+print "%i genes had 0%% coverage: %s" % (missing, ', '.join(missingList))
 print "------------------------------------"

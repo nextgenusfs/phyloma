@@ -12,6 +12,7 @@ parser.add_argument('-m','--raxml_method', default='GTRGAMMA', help='RAxML metho
 parser.add_argument('--outgroup', help='Outgroup for RAxML')
 parser.add_argument('--bootstrap', default='100', help='Num of Rapid Bootstraps for RAxML')
 parser.add_argument('--cpus', default=6, help='Num of threads to use')
+parser.add_argument('--quiet', action='store_true', help='do not print any messages')
 args = parser.parse_args()
 
 convertRAxML = os.path.join(currentdir, 'raxml_convert.pl')
@@ -45,26 +46,28 @@ def RunRAxML(input):
                 os.remove(file)
             except:
                 pass
-
-print '----------------------------------------------'
+if not args.quiet:
+    print '----------------------------------------------'
 #get cpus
 cores = str(args.cpus)
 
 #check alignment lengths
 AlignLen = set(getAlignLength(args.input))
 if len(AlignLen) > 1:
-    print 'Different sequence lengths identified in alignment, re-running MAFFT/trimAl'
+    if not args.quiet:
+        print 'Different sequence lengths identified in alignment, re-running MAFFT/trimAl'
     #re-align with mafft
     align = args.out + '.mafft.fa'
     with open(align, 'w') as align_handle:
-        subprocess.call(['mafft','--quiet', '--thread', cores, input], stdout = align_handle)
+        subprocess.call(['mafft', '--quiet', '--thread', cores, input], stdout = align_handle)
 else:
     align = args.input
 
 #run trimal with automated ML settings
 trimal = args.out + '.trimal.fa'
-subprocess.call(['trimal', '-in', align, '-automated1', '-out', trimal])  
-print 'Running RAxML: %s method, %s bootstraps, %i CPUs' % (args.raxml_method, args.bootstrap, args.cpus)
+subprocess.call(['trimal', '-in', align, '-automated1', '-out', trimal])
+if not args.quiet:
+    print 'Running RAxML: %s method, %s bootstraps, %s CPUs' % (args.raxml_method, args.bootstrap, str(args.cpus))
 RunRAxML(trimal)
 
 #parse logfile and get some summary data
@@ -85,15 +88,16 @@ with open(args.out+'.raxml.log', 'rU') as logfile:
             empiricalmatrix = line.split(' likelihood')[0]
             empiricalmatrix = empiricalmatrix.split(': ')[-1]
 
-print 'RAxML version: %s' % version
-print 'alignment length: %i' % getAlignLength(trimal)[0]
-print 'characters with gaps: %s' % gaps
-print 'alignment patterns: %s' % patterns
-if empiricalmatrix == '':
-    print 'substitution model: %s' % submatrix
-else:
-    print 'substitution model: %s' % empiricalmatrix
-print '----------------------------------------------'
-print 'Newick tree saved as %s' % args.out+'.nwk'
-print 'Nexus tree saved as %s' % args.out+'.nexus'
-print '----------------------------------------------'
+if not args.quiet:
+    print 'RAxML version: %s' % version
+    print 'alignment length: %i' % getAlignLength(trimal)[0]
+    print 'characters with gaps: %s' % gaps
+    print 'alignment patterns: %s' % patterns
+    if empiricalmatrix == '':
+        print 'substitution model: %s' % submatrix
+    else:
+        print 'substitution model: %s' % empiricalmatrix
+    print '----------------------------------------------'
+    print 'Newick tree saved as %s' % args.out+'.nwk'
+    print 'Nexus tree saved as %s' % args.out+'.nexus'
+    print '----------------------------------------------'
