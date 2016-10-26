@@ -2,7 +2,7 @@
 
 #script to take phyloma mapped data and making individual gene trees and concatenated
 
-import sys, os, re, argparse, subprocess, operator, inspect
+import sys, os, re, argparse, subprocess, operator, inspect, random
 from natsort import natsorted
 from Bio import SeqIO
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -21,6 +21,7 @@ parser.add_argument('--outgroup', help='Name of species to use as outgroup for c
 parser.add_argument('--bootstrap', default=100, type=int, help='Number of bootstrap replicates')
 parser.add_argument('--raxml', default='GTRGAMMA', help='RAxML method')
 parser.add_argument('-c','--cpus', default=6, type=int, help='Number of CPUS')
+parser.add_argument('--order', default='coverage', choices=['natural', 'coverage', 'random'], help='Order in which genes are selected')
 args = parser.parse_args()
 
 def runMAFFT(input, output):
@@ -75,12 +76,21 @@ for k,v in coverage.items():
 
 print "Skipping %i genes: %s" % (len(skipped), ', '.join(skipped))
 
-sorted_results = sorted(results.items(), reverse=True, key=operator.itemgetter(1))
+#deal with ordering of the list
+if args.order == 'coverage':
+    sorted_results = sorted(results.items(), reverse=True, key=operator.itemgetter(1))
+elif args.order == 'natural':
+    sorted_results = natsorted(results.items(), key=operator.itemgetter(0))
+elif args.order == 'random':
+    sorted_results = sorted(results.items(), key=lambda x: random.random())
 
+#check number to use
 if len(results) < args.num_concat:
     cutoffnum = len(results)
 else:
     cutoffnum = args.num_concat
+
+#output a coverage stats as well as show order in which the sequences are concatenated.
 coverage_output = args.out+'.gene_stats.csv'
 final_list = []
 with open(coverage_output, 'w') as cov_out:
@@ -95,8 +105,8 @@ with open(coverage_output, 'w') as cov_out:
             print "Found best %i genes" % cutoffnum
             break
 
-#sort alphabetically gene names
-final_list = natsorted(final_list)
+#sort alphabetically gene names for concatenation
+#final_list = natsorted(final_list)
 
 #now get each of these files
 concat = os.path.join(args.out+'_concat.fa')
