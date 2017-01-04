@@ -102,7 +102,7 @@ with open(coverage_output, 'w') as cov_out:
             continue
         final_list.append(i[0])
         if len(final_list) == cutoffnum:
-            print "Found best %i genes" % cutoffnum
+            print "Using %i genes that were sorted by %s" % (cutoffnum, args.order)
             break
 
 #sort alphabetically gene names for concatenation
@@ -129,7 +129,7 @@ with open(concat, 'w') as concat_out:
                 concat_out.write(str(rec.seq))
         concat_out.write('\n')
         
-align = os.path.join(currentdir, 'run_raxml.py')
+align = os.path.join(currentdir, 'bin', 'run_raxml.py')
 if args.single_trees:
     if not os.path.isdir(args.out+'_align'):
         os.makedirs(args.out+'_align')

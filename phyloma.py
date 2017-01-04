@@ -5,7 +5,7 @@
 import sys, os, subprocess, inspect
 script_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 
-version = '0.1.0'
+version = '0.2.0'
 
 default_help = """
 Usage:       phyloma <command> <arguments>
@@ -16,6 +16,7 @@ Description: Phyloma: Phylogentic Marker-gene Analysis
 Command:     map            Map reads to Reference Genome
              draw           Combine mapped data to draw trees
              hmm            Find HMM models in genomes (GBK format)
+             busco          Run BUSCO2 on several proteomes, pull out conserved models
              raxml          Construct RAxML phylogeny.
              
 Written by Jon Palmer (2016) nextgenusfs@gmail.com
@@ -48,7 +49,7 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
         
         arguments = sys.argv[2:]
         if len(arguments) > 1:
-            cmd = os.path.join(script_path, 'phyloma_map.py')
+            cmd = os.path.join(script_path, 'bin', 'phyloma_map.py')
             arguments.insert(0, cmd)
             exe = sys.executable
             arguments.insert(0, exe)
@@ -81,7 +82,7 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
         
         arguments = sys.argv[2:]
         if len(arguments) > 1:
-            cmd = os.path.join(script_path, 'phyloma_concat.py')
+            cmd = os.path.join(script_path, 'bin', 'phyloma_concat.py')
             arguments.insert(0, cmd)
             exe = sys.executable
             arguments.insert(0, exe)
@@ -114,7 +115,7 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
         
         arguments = sys.argv[2:]
         if len(arguments) > 1:
-            cmd = os.path.join(script_path, 'findHMM.py')
+            cmd = os.path.join(script_path, 'bin', 'findHMM.py')
             arguments.insert(0, cmd)
             exe = sys.executable
             arguments.insert(0, exe)
@@ -122,6 +123,37 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
         else:
             print help
             sys.exit(1)
+    elif sys.argv[1] == 'busco':
+        help = """
+Usage:       phyloma %s <arguments>
+version:     %s
+
+Description: This script is wrapper for BUSCO2, runs BUSCO on each proteome and pulls out 
+             BUSCO gene models found in all proteomes.  It then concatenates the results
+             to build a phylogeny.
+    
+Arguments:   -i,--input         Input Genomes in GBK format or Proteomes in FASTA (Required)
+             -o,--out           Base name for output. (Required)
+             -b,--busco         Path to BUSCO2 script. (Required)
+             -d,--busco_db      Path to BUSCO2 database folder. (Required)
+             -n,--num           Number of models to concatenate. Default is all found
+             -c,--cpus          Number of CPUs to use. Default: 6
+             --dir              Previously run direcotry (re-use BUSCO2 results)
+
+Written by Jon Palmer (2016) nextgenusfs@gmail.com
+        """ % (sys.argv[1], version)
+        
+        arguments = sys.argv[2:]
+        if len(arguments) > 1:
+            cmd = os.path.join(script_path, 'bin', 'busco4phylogeny.py')
+            arguments.insert(0, cmd)
+            exe = sys.executable
+            arguments.insert(0, exe)
+            subprocess.call(arguments)
+        else:
+            print help
+            sys.exit(1)
+
     elif sys.argv[1] == 'raxml':
         help = """
 Usage:       phyloma %s <arguments>
@@ -141,7 +173,7 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
         
         arguments = sys.argv[2:]
         if len(arguments) > 1:
-            cmd = os.path.join(script_path, 'run_raxml.py')
+            cmd = os.path.join(script_path, 'bin', 'run_raxml.py')
             arguments.insert(0, cmd)
             exe = sys.executable
             arguments.insert(0, exe)

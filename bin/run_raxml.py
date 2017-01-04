@@ -59,7 +59,7 @@ if len(AlignLen) > 1:
     #re-align with mafft
     align = args.out + '.mafft.fa'
     with open(align, 'w') as align_handle:
-        subprocess.call(['mafft', '--quiet', '--thread', cores, input], stdout = align_handle)
+        subprocess.call(['mafft', '--quiet', '--thread', cores, args.input], stdout = align_handle)
 else:
     align = args.input
 

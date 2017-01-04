@@ -22,6 +22,9 @@ parser.add_argument('-c','--cpus', default=6, type=int, help='Number of CPUS')
 parser.add_argument('--force', action='store_true', help='use existing folder')
 parser.add_argument('--bam', help='Precomputed BAM alignment (sorted)')
 parser.add_argument('--variants', help='Precomputed FreeBayes variants (bgzipped)')
+parser.add_argument('--fasta', help='Multi-fasta genes computed elsewhere, header must be: args.out_GeneID')
+parser.add_argument('--its_fasta', help='Reference genome ITS sequence')
+parser.add_argument('--lsu_fasta', help='Reference genome LSU sequence')
 args = parser.parse_args()
 
 FNULL = open(os.devnull, 'w')
@@ -206,6 +209,19 @@ for i in coordDict:
                 output6.write(line)
     os.remove(outfasta)
     os.remove(tmpseq)
+
+#if external fasta is passed parse here
+if args.fasta:
+    with open(args.fasta, 'rU') as inputfasta:
+        for rec in SeqIO.parse(inputfasta, 'fasta'):
+            if args.out in rec.id:
+                basename = rec.id.split('_')[-1]
+                fastaname = os.path.join(tmpdir, basename+'.fa')
+                rec.id = basename
+                rec.description = ''
+                rec.name = ''
+                with open(fastaname, 'w') as output:
+                    SeqIO.write(rec, output, 'fasta')
 
 #loop through the results, printing out some stats for each locus
 print "------------------------------------"
