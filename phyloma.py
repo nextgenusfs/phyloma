@@ -5,7 +5,7 @@
 import sys, os, subprocess, inspect
 script_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 
-version = '0.2.0'
+version = '0.2.1'
 
 default_help = """
 Usage:       phyloma <command> <arguments>
@@ -15,9 +15,10 @@ Description: Phyloma: Phylogentic Marker-gene Analysis
     
 Command:     map            Map reads to Reference Genome
              draw           Combine mapped data to draw trees
+             
              hmm            Find HMM models in genomes (GBK format)
              busco          Run BUSCO2 on several proteomes, pull out conserved models
-             raxml          Construct RAxML phylogeny.
+             raxml          Construct RAxML phylogeny
              
 Written by Jon Palmer (2016) nextgenusfs@gmail.com
         """ % version
