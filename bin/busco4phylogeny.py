@@ -22,6 +22,79 @@ parser.add_argument('-c','--cpus', type=int, default=1, help='Number of CPUs')
 parser.add_argument('--dir', help='Previously run directory')
 args=parser.parse_args()
 
+def getID(input, type):
+    #function to get ID from genbank record.features
+    locusTag = None
+    ID = None
+    Parent = None
+    if type == 'gene':
+        try:
+            locusTag = input.qualifiers['locus_tag'][0]
+        except KeyError:
+            pass
+        if not locusTag:
+            try:
+                locusTag = input.qualifiers['gene'][0]
+            except KeyError:
+                pass
+        else:
+            try:
+                ID = input.qualifiers['gene'][0]
+            except KeyError:
+                pass
+        return locusTag, ID, locusTag
+        
+    elif type == 'mRNA' or type == 'tRNA' or type == 'ncRNA' or type == 'rRNA':
+        try:
+            locusTag = input.qualifiers['locus_tag'][0]
+            Parent = locusTag
+        except KeyError:
+            pass
+        if not locusTag:
+            try:
+                locusTag = input.qualifiers['transcript_id'][0]
+                ID = locusTag
+            except KeyError:
+                pass
+            try:
+                Parent = input.qualifiers['gene'][0]
+            except KeyError:
+                pass
+        else:
+            try:
+                ID = input.qualifiers['transcript_id'][0]
+            except KeyError:
+                pass
+        if ID:
+            if ':' in ID:
+                ID = ID.split(':')[-1]
+        return locusTag, ID, Parent
+                   
+    elif type == 'CDS':
+        try:
+            locusTag = input.qualifiers['locus_tag'][0]
+            Parent = locusTag
+        except KeyError:
+            pass
+        if not locusTag:
+            try:
+                locusTag = input.qualifiers['protein_id'][0]
+            except KeyError:
+                pass
+            try:
+                Parent = input.qualifiers['gene'][0]
+            except KeyError:
+                pass       
+        else:
+            try:
+                ID = input.qualifiers['protein_id'][0]
+            except KeyError:
+                pass
+        if ID:
+            if ':' in ID:
+                ID = ID.split(':')[-1]
+        return locusTag, ID, Parent
+
 def gb2name(input):
     with open(input, 'rU') as gbk:
         for record in SeqIO.parse(gbk, 'genbank'):
@@ -48,10 +121,14 @@ def gb2prots(input, tmpdir):
             for record in SeqIO.parse(gbk, 'genbank'):
                 for f in record.features:
                     if f.type == "CDS":
-                        Name = f.qualifiers['locus_tag'][0]
+                    	locusTag, ID, Parent = getID(f, f.type)
+                        if not ID:
+                        	Name = locusTag
+                        else:
+                        	Name = ID
                         if not Name in check:
                             check.append(Name)
-                        else: #duplicate locus tag which is so fucking stupid, but apparently happens
+                        else: #duplicate locus tag which is so stupid, but apparently happens in GenBank files
                             Name = Name+'_1'
                             if Name in check:
                                 splitname = Name.split('_')
@@ -125,7 +202,7 @@ for x in file_list:
     bs_results = os.path.join(tmpdir, 'run_'+name, 'full_table_'+name+'.tsv')
     if not os.path.isfile(bs_results):
         cmd = [args.busco, '-i', x, '-m', 'proteins', '-l', os.path.abspath(args.busco_db), '-o', name, '-c', str(args.cpus), '-f']
-        with open(logfile, 'ab') as log:
+        with open(logfile, 'a') as log:
             subprocess.call(cmd, cwd=tmpdir, stdout = log, stderr = log)
     BuscoResults = parseBUSCO(bs_results)
     AllResults.append(BuscoResults)
