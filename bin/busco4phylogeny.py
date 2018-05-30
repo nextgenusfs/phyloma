@@ -177,7 +177,7 @@ if os.path.isfile(logfile):
     
 #first parse the arguments
 if not args.dir:
-    tmpdir = 'busco2raxml_'+str(os.getpid())
+    tmpdir = 'phylomaBUSCO_'+str(os.getpid())
     os.makedirs(tmpdir)
 else:
     tmpdir = args.dir
@@ -201,7 +201,7 @@ for x in file_list:
     name = os.path.basename(x).split('.',-1)[0]
     bs_results = os.path.join(tmpdir, 'run_'+name, 'full_table_'+name+'.tsv')
     if not os.path.isfile(bs_results):
-        cmd = [args.busco, '-i', x, '-m', 'proteins', '-l', os.path.abspath(args.busco_db), '-o', name, '-c', str(args.cpus), '-f']
+        cmd = [os.path.abspath(args.busco), '-i', x, '-m', 'proteins', '-l', os.path.abspath(args.busco_db), '-o', name, '-c', str(args.cpus), '-f']
         with open(logfile, 'a') as log:
             subprocess.call(cmd, cwd=tmpdir, stdout = log, stderr = log)
     BuscoResults = parseBUSCO(bs_results)
@@ -236,7 +236,11 @@ else:
 print "BUSCO2 Results:"
 print "----------------------------------"
 #now loop through data and pull out the proteins for each
-with open(args.out, 'w') as output:
+if '.fa' in args.out:
+	outputfasta = args.out
+else:
+	outputfasta = args.out+'.fasta'
+with open(outputfasta, 'w') as output:
     for i in range(0,len(args.input)):
         SpeciesName = os.path.basename(file_list[i]).split('.',-1)[0]
         Proteins = SeqIO.index(os.path.join(tmpdir, file_list[i]), 'fasta')
@@ -258,5 +262,5 @@ with open(args.out, 'w') as output:
 #finalize
 print "\nFound %i BUSCOs conserved in all genomes, randomly chose %i" % (len(Keepers), len(Keepersfilt))
 print("%s\n" %  ', '.join(Keepersfilt))
-print "Concatenated protein sequences for all %i genomes located in: %s" % (len(args.input), args.out)
+print "Concatenated protein sequences for all %i genomes located in: %s" % (len(args.input), outputfasta)
 print "----------------------------------"
