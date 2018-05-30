@@ -186,7 +186,7 @@ for i in args.input:
     if i.endswith('.gbk') or i.endswith('.gbf') or i.endswith('.gbff'):
         gb2prots(i, tmpdir)
     else:
-        shutil.copyfile(i, os.path.join(tmpdir, i))
+        shutil.copy(i, tmpdir)
 
 #now only files in tmpdir are protein fasta files, grab them all
 file_list = []
