@@ -130,16 +130,16 @@ Usage:       phyloma %s <arguments>
 version:     %s
 
 Description: This script is wrapper for BUSCO2, runs BUSCO on each proteome and pulls out 
-             BUSCO gene models found in all proteomes.  It then concatenates the results
-             to build a phylogeny.
+             BUSCO gene models found in all proteomes and cds transcripts.  It then 
+             concatenates the results to build a phylogeny. 
     
 Arguments:   -i,--input         Input Genomes in GBK format or Proteomes in FASTA (Required)
              -o,--out           Base name for output. (Required)
              -b,--busco         Path to BUSCO2 script. (Required)
              -d,--busco_db      Path to BUSCO2 database folder. (Required)
              -n,--num           Number of models to concatenate. Default is all found
-             -c,--cpus          Number of CPUs to use. Default: 6
-             --dir              Previously run direcotry (re-use BUSCO2 results)
+             -c,--cpus          Number of CPUs to use. Default: 1
+             --dir              Previously run directory (re-use BUSCO2 results)
 
 Written by Jon Palmer (2016) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)

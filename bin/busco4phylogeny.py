@@ -3,6 +3,8 @@
 import sys, argparse, os, subprocess, shutil, random
 from natsort import natsorted
 from Bio import SeqIO
+import textwrap
+import datetime
 
 class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
     def __init__(self,prog):
@@ -21,6 +23,22 @@ parser.add_argument('-n','--num', type=int, help='Number of BUSCO models to use 
 parser.add_argument('-c','--cpus', type=int, default=1, help='Number of CPUs')
 parser.add_argument('--dir', help='Previously run directory')
 args=parser.parse_args()
+
+def printCMD(cmd):
+    stringcmd = '{:}'.format(' '.join(cmd))
+    prefix = '\033[96mCMD:\033[00m '
+    wrapper = textwrap.TextWrapper(initial_indent=prefix, width=80, subsequent_indent=' '*8, break_long_words=False)
+    print(wrapper.fill(stringcmd))
+
+def status(string):
+    print('\033[92m[{:}]\033[00m {:}'.format(datetime.datetime.now().strftime('%b %d %I:%M %p'), string))
+
+
+def softwrap(string, every=80):
+    lines = []
+    for i in xrange(0, len(string), every):
+        lines.append(string[i:i+every])
+    return '\n'.join(lines)
 
 def getID(input, type):
     #function to get ID from genbank record.features
@@ -115,26 +133,32 @@ def gb2name(input):
 
 def gb2prots(input, tmpdir):
     check = []
-    outname = gb2name(input)+'.prots.fa'
-    with open(os.path.join(tmpdir, outname), 'w') as proteins:
-        with open(input, 'rU') as gbk:
-            for record in SeqIO.parse(gbk, 'genbank'):
-                for f in record.features:
-                    if f.type == "CDS":
-                    	locusTag, ID, Parent = getID(f, f.type)
-                        if not ID:
-                        	Name = locusTag
-                        else:
-                        	Name = ID
-                        if not Name in check:
-                            check.append(Name)
-                        else: #duplicate locus tag which is so stupid, but apparently happens in GenBank files
-                            Name = Name+'_1'
-                            if Name in check:
-                                splitname = Name.split('_')
-                                num = int(splitname[1])+1
-                                Name = splitname[0]+'_'+str(num)
-                        proteins.write(">%s\n%s\n" % (Name, f.qualifiers['translation'][0]))
+    basename = gb2name(input)
+    outname = basename+'.prots.fa'
+    if not os.path.isdir(os.path.join(tmpdir, 'transcripts')):
+    	os.makedirs(os.path.join(tmpdir, 'transcripts'))
+    if not os.path.isfile(os.path.join(tmpdir, 'transcripts', basename+'.cds.fa')):
+		with open(os.path.join(tmpdir, outname), 'w') as proteins:
+			with open(os.path.join(tmpdir, 'transcripts', basename+'.cds.fa'), 'w') as transcripts:
+				with open(input, 'rU') as gbk:
+					for record in SeqIO.parse(gbk, 'genbank'):
+						for f in record.features:
+							if f.type == "CDS":
+								locusTag, ID, Parent = getID(f, f.type)
+								if not ID:
+									Name = locusTag
+								else:
+									Name = ID
+								if not Name in check:
+									check.append(Name)
+								else: #duplicate locus tag which is so stupid, but apparently happens in GenBank files
+									Name = Name+'_1'
+									if Name in check:
+										splitname = Name.split('_')
+										num = int(splitname[1])+1
+										Name = splitname[0]+'_'+str(num)
+								proteins.write(">%s\n%s\n" % (Name, softwrap(f.qualifiers['translation'][0])))
+								transcripts.write(">%s\n%s\n" % (Name, softwrap(str(f.extract(record.seq)))))
 
 def parseBUSCO(input):
     #now parse output
@@ -182,6 +206,7 @@ if not args.dir:
 else:
     tmpdir = args.dir
 
+status('Loading {:,} species for analysis'.format(len(args.input)))
 for i in args.input:
     if i.endswith('.gbk') or i.endswith('.gbf') or i.endswith('.gbff'):
         gb2prots(i, tmpdir)
@@ -197,17 +222,20 @@ for file in os.listdir(tmpdir):
 
 #now loop through each and run BUSCO, collect complete results in list of dictionaries
 AllResults = []
+status('Running iterative BUSCO analysis each proteome')
 for x in file_list:
     name = os.path.basename(x).split('.',-1)[0]
     bs_results = os.path.join(tmpdir, 'run_'+name, 'full_table_'+name+'.tsv')
     if not os.path.isfile(bs_results):
-        cmd = [os.path.abspath(args.busco), '-i', x, '-m', 'proteins', '-l', os.path.abspath(args.busco_db), '-o', name, '-c', str(args.cpus), '-f']
+        cmd = [os.path.abspath(args.busco), '-i', x, '-m', 'proteins', '-f', '-l', os.path.abspath(args.busco_db), '-o', name, '-c', str(args.cpus)]
+        printCMD(cmd)
         with open(logfile, 'a') as log:
             subprocess.call(cmd, cwd=tmpdir, stdout = log, stderr = log)
     BuscoResults = parseBUSCO(bs_results)
     AllResults.append(BuscoResults)
 
 #now get a list of all, just parsing keys here
+status('Parsing BUSCO results, determining shared orthologs across all genomes')
 AllBuscos = []
 for x in AllResults:
     for k,v in x.items():
@@ -235,32 +263,48 @@ else:
     Keepersfilt = Keepers
 print "BUSCO2 Results:"
 print "----------------------------------"
-#now loop through data and pull out the proteins for each
+#now loop through data and pull out the proteins and cds-transcripts for each
 if '.fa' in args.out:
-	outputfasta = args.out
+	outputbasename = args.out.rsplit('.fa', 1)[0]
 else:
-	outputfasta = args.out+'.fasta'
-with open(outputfasta, 'w') as output:
-    for i in range(0,len(args.input)):
-        SpeciesName = os.path.basename(file_list[i]).split('.',-1)[0]
-        Proteins = SeqIO.index(os.path.join(tmpdir, file_list[i]), 'fasta')
-        Seq = []
-        print "%i BUSCOs found in %s" % (len(AllResults[i]), SpeciesName)
-        with open(os.path.join(tmpdir, 'run_'+SpeciesName, SpeciesName+'.buscos.fa'), 'w') as speciesout:  
-            for y in AllBuscos:
-                if y in AllResults[i]:
-                    ID = AllResults[i].get(y)[0]
-                    rec = Proteins[ID]
-                    rec.id = rec.id+'|'+y
-                    rec.name = ''
-                    rec.description = ''
-                    SeqIO.write(rec, speciesout, 'fasta')
-                    if y in Keepersfilt:
-                        Seq.append(str(rec.seq))
-        output.write('>%s\n%s\n' % (SpeciesName, ''.join(Seq)))
+	outputbasename = args.out
+
+protOut = outputbasename+'.proteins.fasta'
+cdsOut = outputbasename+'.transcripts.fasta'
+with open(protOut, 'w') as output:
+	with open(cdsOut, 'w') as output2:
+		for i in range(0,len(args.input)):
+			SpeciesName = os.path.basename(file_list[i]).rsplit('.', 2)[0]
+			Proteins = SeqIO.index(os.path.join(tmpdir, SpeciesName+'.prots.fa'), 'fasta')
+			Transcripts = SeqIO.index(os.path.join(tmpdir, 'transcripts', SpeciesName+'.cds.fa'), 'fasta')
+			Seq = []
+			Seq2 = []
+			print "%i BUSCOs found in %s" % (len(AllResults[i]), SpeciesName)
+			with open(os.path.join(tmpdir, 'run_'+SpeciesName, SpeciesName+'.buscos.prots.fa'), 'w') as speciesout:
+				with open(os.path.join(tmpdir, 'run_'+SpeciesName, SpeciesName+'.buscos.cds.fa'), 'w') as speciesout2:
+					for y in AllBuscos:
+						if y in AllResults[i]:
+							ID = AllResults[i].get(y)[0]
+							rec = Proteins[ID]
+							rec.id = rec.id+'|'+y
+							rec.name = ''
+							rec.description = ''
+							SeqIO.write(rec, speciesout, 'fasta')
+							if y in Keepersfilt:
+								Seq.append(str(rec.seq))
+							rec = Transcripts[ID]
+							rec.id = rec.id+'|'+y
+							rec.name = ''
+							rec.description = ''
+							SeqIO.write(rec, speciesout2, 'fasta')
+							if y in Keepersfilt:
+								Seq2.append(str(rec.seq))
+			output.write('>%s\n%s\n' % (SpeciesName, softwrap(''.join(Seq))))
+			output2.write('>%s\n%s\n' % (SpeciesName, softwrap(''.join(Seq2))))
 
 #finalize
 print "\nFound %i BUSCOs conserved in all genomes, randomly chose %i" % (len(Keepers), len(Keepersfilt))
 print("%s\n" %  ', '.join(Keepersfilt))
-print "Concatenated protein sequences for all %i genomes located in: %s" % (len(args.input), outputfasta)
+print "Concatenated protein sequences for all %i genomes located in: %s" % (len(args.input), protOut)
+print "Concatenated transcript sequences for all %i genomes located in: %s" % (len(args.input), cdsOut)
 print "----------------------------------"
